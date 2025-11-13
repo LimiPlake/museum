@@ -15,6 +15,7 @@ function init() {
   // CAMERA
   camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 200);
   camera.position.set(0, 2, 15); // spawn inside Welcome Arch
+  camera.lookAt(0, 2, 0);
   console.log('Camera position:', camera.position);
 
   // RENDERER
@@ -106,6 +107,16 @@ function init() {
     scene.add(group);
     return group;
   }
+
+  const testCube = new THREE.Mesh(
+  new THREE.BoxGeometry(1, 1, 1),
+  new THREE.MeshStandardMaterial({ color: 0xff0000 })
+);
+testCube.position.set(0, 1, 5);
+scene.add(testCube);
+
+console.log("%c🎨 LimiPlake Museum scene loaded successfully!", "color: green; font-weight: bold;");
+
 
   // ROOMS
   const rooms = [
