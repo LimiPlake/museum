@@ -1,13 +1,9 @@
-// museum.js
-import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.module.min.js';
-import { PointerLockControls } from 'https://cdn.jsdelivr.net/npm/three@0.152.0/examples/jsm/controls/PointerLockControls.js';
+// LimiPlake Museum of Ideas 3D Walkthrough
+// Made for Anhad :) — Classic museum layout with floating links
 
-let camera, scene, renderer, controls;
-let objects = [];
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-const plaqueDiv = document.getElementById('plaque');
+let scene, camera, renderer, controls;
+const move = { forward:false, backward:false, left:false, right:false };
+const velocity = 0.15;
 
 init();
 animate();
@@ -16,162 +12,184 @@ function init() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xeeeeee);
 
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 1.6, 0);
+  // CAMERA
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 200);
+  camera.position.set(0, 1.6, 0); // starting height ~ eye level
 
+  // RENDERER
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  controls = new PointerLockControls(camera, renderer.domElement);
-
-  const blocker = document.getElementById('blocker');
-  const instructions = document.getElementById('instructions');
-  // Immediately engage pointer lock on click
-  document.body.addEventListener('click', () => {
-    controls.lock();
-  });
-
-  controls.addEventListener('lock', function () {});
-  controls.addEventListener('unlock', function () {});
-
+  // CONTROLS (Pointer Lock)
+  controls = new THREE.PointerLockControls(camera, renderer.domElement);
+  document.addEventListener('click', () => controls.lock());
   scene.add(controls.getObject());
 
-  const ambient = new THREE.HemisphereLight(0xffffff, 0x444444);
-  ambient.position.set(0, 20, 0);
+  // LIGHTING
+  const ambient = new THREE.HemisphereLight(0xffffff, 0x777777, 1);
   scene.add(ambient);
 
-  const floorTexture = new THREE.TextureLoader().load('textures/wood_floor.jpg');
-  floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-  floorTexture.repeat.set(4,4);
-  const floorMat = new THREE.MeshStandardMaterial({ map: floorTexture });
+  const pointLight = new THREE.PointLight(0xfff8e1, 0.6);
+  pointLight.position.set(0, 5, 0);
+  scene.add(pointLight);
 
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), floorMat);
-  floor.rotation.x = -Math.PI/2;
-  scene.add(floor);
+  // LOAD TEXTURES
+  const loader = new THREE.TextureLoader();
+  const floorTex = loader.load('textures/wood_floor.jpg');
+  floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
+  floorTex.repeat.set(4,4);
 
-  const wallTexture = new THREE.TextureLoader().load('textures/marble_wall.jpg');
-  const wallMat = new THREE.MeshStandardMaterial({ map: wallTexture });
+  const wallTex = loader.load('textures/marble_wall.jpg');
+  const roadTex = loader.load('textures/road.jpg');
+  roadTex.wrapS = roadTex.wrapT = THREE.RepeatWrapping;
+  roadTex.repeat.set(10,1);
 
-  // Create walls & rooms logic
-  function makeRoom(width, height, depth, position) {
-    const room = new THREE.Group();
-    const wallGeoV = new THREE.PlaneGeometry(depth, height);
-    const wallGeoH = new THREE.PlaneGeometry(width, height);
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex });
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex });
+  const roadMat = new THREE.MeshStandardMaterial({ map: roadTex });
 
-    const wall1 = new THREE.Mesh(wallGeoV, wallMat);
-    wall1.position.set( position.x + width/2, position.y + height/2, position.z );
-    wall1.rotation.y = -Math.PI/2;
-    room.add(wall1);
+  // FUNCTION: Create an empty room box with texture and link
+  function makeRoom(name, x, y, z) {
+    const group = new THREE.Group();
 
-    const wall2 = new THREE.Mesh(wallGeoV, wallMat);
-    wall2.position.set( position.x - width/2, position.y + height/2, position.z );
-    wall2.rotation.y = Math.PI/2;
-    room.add(wall2);
+    // Room floor
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(10,10), floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    group.add(floor);
 
-    const wall3 = new THREE.Mesh(wallGeoH, wallMat);
-    wall3.position.set( position.x, position.y + height/2, position.z + depth/2 );
-    wall3.rotation.y = 0;
-    room.add(wall3);
+    // Four walls
+    const wallGeo = new THREE.PlaneGeometry(10,3);
+    const front = new THREE.Mesh(wallGeo, wallMat);
+    front.position.set(0,1.5,-5);
+    group.add(front);
 
-    const wall4 = new THREE.Mesh(wallGeoH, wallMat);
-    wall4.position.set( position.x, position.y + height/2, position.z - depth/2 );
-    wall4.rotation.y = Math.PI;
-    room.add(wall4);
+    const back = front.clone();
+    back.position.set(0,1.5,5);
+    back.rotation.y = Math.PI;
+    group.add(back);
 
-    room.position.set(position.x, position.y, position.z);
-    scene.add(room);
-    objects.push(room);
+    const left = new THREE.Mesh(wallGeo, wallMat);
+    left.position.set(-5,1.5,0);
+    left.rotation.y = Math.PI/2;
+    group.add(left);
+
+    const right = left.clone();
+    right.position.set(5,1.5,0);
+    right.rotation.y = -Math.PI/2;
+    group.add(right);
+
+    // Floating clickable link (just HTML)
+    const link = document.createElement('a');
+    link.textContent = name;
+    link.href = "#";
+    link.style.position = 'absolute';
+    link.style.color = 'blue';
+    link.style.font = '20px Arial';
+    link.style.textDecoration = 'underline';
+    link.style.pointerEvents = 'auto';
+    document.body.appendChild(link);
+
+    group.userData = { link, pos: new THREE.Vector3(x, y + 1.5, z) };
+
+    group.position.set(x, y, z);
+    scene.add(group);
+    return group;
   }
 
-  // Layout your museum (floor plan)
-  makeRoom(10, 3, 10, {x: -10, y: 0, z: 0}); // Color Forge (left)
-  makeRoom(10, 3, 10, {x: +10, y: 0, z: 0}); // Melody Hall (right)
-  makeRoom(10, 3, 10, {x: 0, y: -3.5, z: +12}, ); // Finding Lab (downstairs)
-  makeRoom(10, 3, 10, {x: 0, y: +3.5, z: +12}); // Upstairs room corridor origin
-  makeRoom(10, 3, 10, {x: -10, y: +3.5, z: +24}); // Reakly Library (upper left)
-  makeRoom(10, 3, 10, {x: +10, y: +3.5, z: +24}); // Maker’s Workshop (upper right)
-  makeRoom(10, 3, 10, {x: 0, y: +3.5, z: +36}); // Prodder Display (straight ahead upstairs)
-
-  // Add clickable items in Prodder Display
-  const itemsInfo = [
-    { name: 'Unlimis', pos: { x: 0, y:1, z: +36 + 1 } },
-    { name: 'Podcard', pos: { x: -2, y:1, z: +36 - 1 } },
-    { name: 'USBD Device', pos: { x: +2, y:1, z: +36 - 1 } }
+  // ROOMS
+  const rooms = [
+    makeRoom("Color Forge", -10, 0, 0),
+    makeRoom("Melody Hall", 10, 0, 0),
+    makeRoom("Finding Lab", 0, -3.5, 12),
+    makeRoom("Reakly Library", -10, 3.5, 24),
+    makeRoom("Maker's Workshop", 10, 3.5, 24),
+    makeRoom("Prodder Display", 0, 3.5, 36)
   ];
 
-  const clickMaterial = new THREE.MeshStandardMaterial({ color: 0xffcc00 });
-  itemsInfo.forEach(info => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), clickMaterial);
-    mesh.position.set(info.pos.x, info.pos.y, info.pos.z);
-    mesh.name = info.name;
-    scene.add(mesh);
-    objects.push(mesh);
+  // MAIN FLOOR
+  const museumFloor = new THREE.Mesh(new THREE.PlaneGeometry(50, 80), floorMat);
+  museumFloor.rotation.x = -Math.PI/2;
+  museumFloor.position.y = -0.01;
+  scene.add(museumFloor);
+
+  // ROAD OUTSIDE (long but blocked)
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(50, 200), roadMat);
+  road.rotation.x = -Math.PI/2;
+  road.position.set(0, -0.02, -110);
+  scene.add(road);
+
+  // INVISIBLE WALL at entrance (so you can't walk onto road)
+  const wallGeo = new THREE.BoxGeometry(50, 10, 1);
+  const invisibleMat = new THREE.MeshBasicMaterial({ visible: false });
+  const barrier = new THREE.Mesh(wallGeo, invisibleMat);
+  barrier.position.set(0, 1.5, -5);
+  scene.add(barrier);
+
+  // MOVEMENT EVENTS
+  document.addEventListener('keydown', (e)=>{
+    switch(e.code){
+      case 'KeyW': case 'ArrowUp': move.forward=true; break;
+      case 'KeyS': case 'ArrowDown': move.backward=true; break;
+      case 'KeyA': case 'ArrowLeft': move.left=true; break;
+      case 'KeyD': case 'ArrowRight': move.right=true; break;
+    }
+  });
+  document.addEventListener('keyup', (e)=>{
+    switch(e.code){
+      case 'KeyW': case 'ArrowUp': move.forward=false; break;
+      case 'KeyS': case 'ArrowDown': move.backward=false; break;
+      case 'KeyA': case 'ArrowLeft': move.left=false; break;
+      case 'KeyD': case 'ArrowRight': move.right=false; break;
+    }
   });
 
-  window.addEventListener('resize', onWindowResize);
-  document.addEventListener('keydown', onKeyDown);
-  document.addEventListener('click', onMouseClick);
-}
+  // UPDATE LINKS POSITION on screen each frame
+  function updateLinks() {
+    rooms.forEach(r=>{
+      const screenPos = r.userData.pos.clone();
+      screenPos.project(camera);
+      const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+      r.userData.link.style.left = `${x - 40}px`;
+      r.userData.link.style.top = `${y}px`;
 
-function onWindowResize() {
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-const move = { forward:false, backward:false, left:false, right:false };
-
-function onKeyDown(event) {
-  switch (event.code) {
-    case 'ArrowUp': case 'KeyW': move.forward = true; break;
-    case 'ArrowDown': case 'KeyS': move.backward = true; break;
-    case 'ArrowLeft': case 'KeyA': move.left = true; break;
-    case 'ArrowRight': case 'KeyD': move.right = true; break;
+      // hide if behind camera
+      const dist = camera.position.distanceTo(r.userData.pos);
+      r.userData.link.style.display = dist < 25 ? 'block' : 'none';
+    });
   }
-}
 
-document.addEventListener('keyup', function(event){
-  switch (event.code) {
-    case 'ArrowUp': case 'KeyW': move.forward = false; break;
-    case 'ArrowDown': case 'KeyS': move.backward = false; break;
-    case 'ArrowLeft': case 'KeyA': move.left = false; break;
-    case 'ArrowRight': case 'KeyD': move.right = false; break;
-  }
-});
+  window.addEventListener('resize', ()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
 
-function onMouseClick(event) {
-  if (!controls.isLocked) return;
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(objects, true);
-  if (intersects.length > 0) {
-    const obj = intersects[0].object;
-    if (obj.name) {
-      showPlaque(obj.name);
-    }
-  }
-}
-
-function showPlaque(text) {
-  plaqueDiv.textContent = text;
-  plaqueDiv.style.display = 'block';
-  setTimeout(()=> plaqueDiv.style.display = 'none', 2000);
+  // Save function for later animation loop
+  scene.userData.updateLinks = updateLinks;
 }
 
 function animate() {
   requestAnimationFrame(animate);
 
-  const delta = 0.1;
+  // Handle movement
   if (controls.isLocked) {
-    const direction = new THREE.Vector3();
-    if (move.forward) direction.z -= 1;
-    if (move.backward) direction.z += 1;
-    if (move.left) direction.x -= 1;
-    if (move.right) direction.x += 1;
-    direction.applyQuaternion(camera.quaternion);
-    controls.getObject().position.addScaledVector(direction, delta);
+    const dir = new THREE.Vector3();
+    if (move.forward) dir.z -= 1;
+    if (move.backward) dir.z += 1;
+    if (move.left) dir.x -= 1;
+    if (move.right) dir.x += 1;
+    dir.normalize();
+    dir.applyQuaternion(camera.quaternion);
+    controls.getObject().position.addScaledVector(dir, velocity);
   }
 
-  raycaster.setFromCamera(mouse, camera);
+  // Keep camera above floor
+  controls.getObject().position.y = 1.6;
+
+  // Update link positions
+  if (scene.userData.updateLinks) scene.userData.updateLinks();
+
   renderer.render(scene, camera);
 }
