@@ -1,5 +1,5 @@
-// LimiPlake Museum of Ideas 3D Walkthrough
-// Made for Anhad :) — Classic museum layout with floating links
+// The LimiPlake Museum of Ideas — 3D Walkthrough
+// Fixed version: Correct spawn point, lighting, and visible rooms.
 
 let scene, camera, renderer, controls;
 const move = { forward:false, backward:false, left:false, right:false };
@@ -14,15 +14,15 @@ function init() {
 
   // CAMERA
   camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 200);
-  camera.position.set(0, 1.6, 0); // starting height ~ eye level
-
+  camera.position.set(0, 2, 15); // spawn inside Welcome Arch
   // RENDERER
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // CONTROLS (Pointer Lock)
+  // CONTROLS
   controls = new THREE.PointerLockControls(camera, renderer.domElement);
+  controls.getObject().position.set(0, 2, 15); // same spawn height for controls
   document.addEventListener('click', () => controls.lock());
   scene.add(controls.getObject());
 
@@ -30,7 +30,12 @@ function init() {
   const ambient = new THREE.HemisphereLight(0xffffff, 0x777777, 1);
   scene.add(ambient);
 
-  const pointLight = new THREE.PointLight(0xfff8e1, 0.6);
+  // NEW: front directional light to brighten view
+  const frontLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  frontLight.position.set(0, 5, 10);
+  scene.add(frontLight);
+
+  const pointLight = new THREE.PointLight(0xfff8e1, 0.5);
   pointLight.position.set(0, 5, 0);
   scene.add(pointLight);
 
@@ -47,9 +52,13 @@ function init() {
 
   const floorMat = new THREE.MeshStandardMaterial({ map: floorTex });
   const wallMat = new THREE.MeshStandardMaterial({ map: wallTex });
-  const roadMat = new THREE.MeshStandardMaterial({ map: roadTex });
+  const roadMat = new THREE.MeshStandardMaterial({
+    map: roadTex,
+    emissive: 0x111111,
+    emissiveIntensity: 0.4
+  });
 
-  // FUNCTION: Create an empty room box with texture and link
+  // FUNCTION: Make empty room with floating link
   function makeRoom(name, x, y, z) {
     const group = new THREE.Group();
 
@@ -58,7 +67,7 @@ function init() {
     floor.rotation.x = -Math.PI / 2;
     group.add(floor);
 
-    // Four walls
+    // Walls
     const wallGeo = new THREE.PlaneGeometry(10,3);
     const front = new THREE.Mesh(wallGeo, wallMat);
     front.position.set(0,1.5,-5);
@@ -79,7 +88,7 @@ function init() {
     right.rotation.y = -Math.PI/2;
     group.add(right);
 
-    // Floating clickable link (just HTML)
+    // Floating clickable link
     const link = document.createElement('a');
     link.textContent = name;
     link.href = "#";
@@ -87,10 +96,9 @@ function init() {
     link.style.color = 'blue';
     link.style.font = '20px Arial';
     link.style.textDecoration = 'underline';
-    link.style.pointerEvents = 'auto';
     document.body.appendChild(link);
 
-    group.userData = { link, pos: new THREE.Vector3(x, y + 1.5, z) };
+    group.userData = { link, pos: new THREE.Vector3(x, y + 1.6, z) };
 
     group.position.set(x, y, z);
     scene.add(group);
@@ -113,13 +121,13 @@ function init() {
   museumFloor.position.y = -0.01;
   scene.add(museumFloor);
 
-  // ROAD OUTSIDE (long but blocked)
+  // ROAD OUTSIDE
   const road = new THREE.Mesh(new THREE.PlaneGeometry(50, 200), roadMat);
   road.rotation.x = -Math.PI/2;
-  road.position.set(0, -0.02, -110);
+  road.position.set(0, -0.02, -120);
   scene.add(road);
 
-  // INVISIBLE WALL at entrance (so you can't walk onto road)
+  // INVISIBLE BARRIER at entrance
   const wallGeo = new THREE.BoxGeometry(50, 10, 1);
   const invisibleMat = new THREE.MeshBasicMaterial({ visible: false });
   const barrier = new THREE.Mesh(wallGeo, invisibleMat);
@@ -144,7 +152,7 @@ function init() {
     }
   });
 
-  // UPDATE LINKS POSITION on screen each frame
+  // UPDATE LINKS
   function updateLinks() {
     rooms.forEach(r=>{
       const screenPos = r.userData.pos.clone();
@@ -153,10 +161,8 @@ function init() {
       const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
       r.userData.link.style.left = `${x - 40}px`;
       r.userData.link.style.top = `${y}px`;
-
-      // hide if behind camera
       const dist = camera.position.distanceTo(r.userData.pos);
-      r.userData.link.style.display = dist < 25 ? 'block' : 'none';
+      r.userData.link.style.display = dist < 30 ? 'block' : 'none';
     });
   }
 
@@ -166,14 +172,12 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // Save function for later animation loop
   scene.userData.updateLinks = updateLinks;
 }
 
 function animate() {
   requestAnimationFrame(animate);
 
-  // Handle movement
   if (controls.isLocked) {
     const dir = new THREE.Vector3();
     if (move.forward) dir.z -= 1;
@@ -185,10 +189,11 @@ function animate() {
     controls.getObject().position.addScaledVector(dir, velocity);
   }
 
-  // Keep camera above floor
-  controls.getObject().position.y = 1.6;
+  // keep player above floor
+  if (controls.getObject().position.y < 1.6) {
+    controls.getObject().position.y = 1.6;
+  }
 
-  // Update link positions
   if (scene.userData.updateLinks) scene.userData.updateLinks();
 
   renderer.render(scene, camera);
