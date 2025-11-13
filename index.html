@@ -21,10 +21,12 @@
   <div id="info">Click to look around • Use W/A/S/D or Arrow Keys to move</div>
 
   <!-- Three.js and PointerLock -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js";
+    window.THREE = THREE;
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/controls/PointerLockControls.js"></script>
-
-  <!-- Main script -->
   <script src="museum.js"></script>
+
 </body>
 </html>
