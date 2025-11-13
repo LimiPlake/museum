@@ -4,32 +4,28 @@
   <meta charset="UTF-8">
   <title>The LimiPlake Museum of Ideas</title>
   <style>
-    body { margin: 0; overflow: hidden; }
+    body { margin: 0; overflow: hidden; background: #000; }
     canvas { display: block; }
+
     #info {
       position: absolute;
       top: 10px; left: 10px;
-      color: #fff; z-index: 1;
-      font: 16px/1.4 Arial, sans-serif;
-    }
-    #plaque {
-      position: absolute;
-      bottom: 50px; left:50%;
-      transform: translateX(-50%);
-      padding: 12px 24px;
-      background: rgba(0,0,0,0.75);
-      color: #fff;
-      font: 20px Arial, sans-serif;
-      border-radius: 6px;
-      display: none;
+      color: white; font-family: Arial, sans-serif;
+      z-index: 1;
+      background: rgba(0,0,0,0.5);
+      padding: 6px 10px;
+      border-radius: 4px;
     }
   </style>
 </head>
 <body>
-  <div id="info">Use W/A/S/D or Arrow keys to move. Click on items in the Prodder Display room.</div>
-  <div id="plaque"></div>
+  <div id="info">Click to look around • Use W/A/S/D or Arrow Keys to move</div>
+
+  <!-- Three.js and PointerLock -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/controls/PointerLockControls.js"></script>
+
+  <!-- Main script -->
   <script src="museum.js"></script>
 </body>
 </html>
