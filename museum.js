@@ -64,6 +64,7 @@ window.addEventListener("DOMContentLoaded", function () {
           { width: width, height: Math.abs(stepH), depth: stepD },
           scene
         );
+        step.checkCollisions = true;
 
         step.position = new BABYLON.Vector3(
           startPos.x,
@@ -116,6 +117,7 @@ window.addEventListener("DOMContentLoaded", function () {
       );
       room.position = pos;
       room.material = wallMat;
+      room.checkCollisions = true;
 
       const floor = BABYLON.MeshBuilder.CreateGround(
         name + "_floor",
@@ -172,6 +174,29 @@ window.addEventListener("DOMContentLoaded", function () {
     );
     museumFloor.material = floorMat;
     museumFloor.checkCollisions = true;
+    // MAIN HALLWAY WALLS
+function makeWall(x, y, z, width, height, depth) {
+  const wall = BABYLON.MeshBuilder.CreateBox("wall", {
+    width: width,
+    height: height,
+    depth: depth
+  }, scene);
+  wall.position = new BABYLON.Vector3(x, y, z);
+  wall.material = wallMat;
+  wall.checkCollisions = true;
+}
+
+// LEFT WALL
+makeWall(-15, 1.5, 15, 1, 3, 50);
+
+// RIGHT WALL
+makeWall(15, 1.5, 15, 1, 3, 50);
+
+// BACK WALL (behind Color Forge / Melody Hall)
+makeWall(0, 1.5, 30, 30, 3, 1);
+
+// FRONT WALL (entrance area)
+makeWall(0, 1.5, 0, 30, 3, 1);
 
     const road = BABYLON.MeshBuilder.CreateGround(
       "road",
@@ -234,6 +259,42 @@ window.addEventListener("DOMContentLoaded", function () {
     scene.collisionsEnabled = true;
     camera.checkCollisions = true;
 
+    // WELCOME ARCH
+const arch = BABYLON.MeshBuilder.CreateTorus(
+  "arch",
+  {
+    diameter: 12,
+    thickness: 1.2,
+    tessellation: 50
+  },
+  scene
+);
+
+// Position it above the entrance
+arch.rotation = new BABYLON.Vector3(Math.PI / 2, 0, 0);
+arch.position = new BABYLON.Vector3(0, 5, 0);
+
+const archMat = new BABYLON.StandardMaterial("archMat", scene);
+archMat.diffuseColor = new BABYLON.Color3(1, 0.8, 0.2); // warm gold
+arch.material = archMat;
+
+// “WELCOME TO LIMIPLAKE MUSEUM OF IDEAS”
+const archText = new BABYLON.GUI.TextBlock();
+archText.text = "WELCOME TO THE LIMIPLAKE MUSEUM OF IDEAS";
+archText.color = "white";
+archText.fontSize = 32;
+
+// Put text on a plane under the arch
+const textPlane = BABYLON.MeshBuilder.CreatePlane("textPlane", {
+  width: 10,
+  height: 2
+}, scene);
+
+textPlane.position = new BABYLON.Vector3(0, 3, 1);
+textPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_Y;
+
+const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(textPlane);
+advancedTexture.addControl(archText);
     console.log("🎨 LimiPlake Museum of Ideas (STAIRS VERSION) loaded");
 
     return scene;
